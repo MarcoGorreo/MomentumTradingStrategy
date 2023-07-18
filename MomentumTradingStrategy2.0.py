@@ -7,6 +7,7 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 import datetime as dt
 from datetime import timedelta
+import week_Number 
 
 # Downloading tickers from Wikipedia
 
@@ -54,4 +55,6 @@ sp500_price_history['Week Number'] = list(map(lambda i: i.strftime("%U"), sp500_
 
 #il numero settimana è solo dell'anno, deve essere dalla partenza dello script 
 
-print(df['Week Number'].max())
+df = week_Number.week_number_total_n(df)
+
+print(df)
