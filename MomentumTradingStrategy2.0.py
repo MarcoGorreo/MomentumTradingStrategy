@@ -101,10 +101,11 @@ sp500_price_history = trading_functions.determinate_momentum(sp500_price_history
 # MA with 90 days period will require more days to compute than a 30 days period moving average 
 
 sp500_price_history = sp500_price_history[sp500_price_history['Momentum'] != "Error"]
-
 sp500_price_history = sp500_price_history.reset_index(drop=True)
 
 ## CREATING BACKTEST ENVIRONMENT
+
+# Defining variables to perform the strategy
 
 weights_if_long = [0.80,0.20]
 weights_if_short = [0.20,0.80]
@@ -113,6 +114,28 @@ n_assets = 2
 def backtest(sp500_price_history, stocks_df, weights_if_long, weights_if_short, n_assets):
 
     for i in range(max(sp500_price_history['Week Number'])):
-        print(sp500_price_history[sp500_price_history['Week Number'] == i])
+
+        # Gathering the data we need from all dataframes
+
+        temporary_data_sp500 = sp500_price_history[sp500_price_history['Week Number'] == i].reset_index(drop=True)
+
+        # For each week, gathering data of top performer and worst performer
+
+        if len(temporary_data_sp500) == 4 or len(temporary_data_sp500) == 5:
+
+            week = temporary_data_sp500['Week Number'][0]
+            stocks_df_n_week = stocks_df[stocks_df['Week Number'] == week-1].reset_index(drop=True)
+            loc_1,loc_2 = stocks_df_n_week.iloc[0],stocks_df_n_week.iloc[len(stocks_df_n_week)-1]
+            stocks_df_n_week = pd.concat([loc_1,loc_2], axis=1).transpose().reset_index(drop=True)
+            stocks_df_n_week_pct_change = stocks_df_n_week.drop(['Date', 'Week Number'], axis=1).pct_change().drop(0,axis=0).reset_index(drop=True)
+            stocks_df_n_week_pct_change = stocks_df_n_week_pct_change.transpose().rename(columns={0:"Performance"}).sort_values("Performance", ascending=False)
+
+            top_performer = stocks_df_n_week_pct_change.head(n_assets).reset_index()
+            worst_performer = stocks_df_n_week_pct_change.tail(n_assets).reset_index()
+
+            print(top_performer)
+            print(worst_performer)
+
+        else: print("Data for this trading week is incomplete, skipping to the next week...")
 
 backtest(sp500_price_history, stocks_df, weights_if_long, weights_if_short, n_assets)
