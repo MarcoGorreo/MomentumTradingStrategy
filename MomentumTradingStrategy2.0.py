@@ -75,67 +75,83 @@ distinct_moving_average_setting = []
 for type_moving_average in moving_average_types:
     for period_MA in periods:
 
-        sp500_price_history = trading_functions.calculate_moving_average(sp500_price_history,type_moving_average,period_MA)
+        all_ma_sp500_price_history = trading_functions.calculate_moving_average(sp500_price_history,type_moving_average,period_MA)
 
         # Filling an array with all different kind of moving averages 
 
         distinct_moving_average_setting += [f"{type_moving_average}_{period_MA}"]
 
-#sp500_price_history = trading_functions.calculate_moving_average(sp500_price_history,'EMA', periods[1])
-
 # Function to plot the S&P 500 graph
 
-def plot_sp500_graph(sp500_price_history, ema_name):
+def plot_sp500_graph(all_ma_sp500_price_history, ema_name):
 
     plt.figure(figsize=(20, 10))
-    plt.plot(sp500_price_history['Date'],sp500_price_history[ema_name], color="Blue", label="Moving Average")
-    plt.plot(sp500_price_history['Date'],sp500_price_history['Adj Close'], color='Red', label="S&P500")
+    plt.plot(all_ma_sp500_price_history['Date'],all_ma_sp500_price_history[ema_name], color="Blue", label="Moving Average")
+    plt.plot(all_ma_sp500_price_history['Date'],all_ma_sp500_price_history['Adj Close'], color='Red', label="S&P500")
     plt.show()
 
-# We are recalling a function from our personal libary to determinate if the actual momentum of S&P500 is currently long
-# It will check for each data point if the actual price is long 
 
-sp500_price_history = trading_functions.determinate_momentum(sp500_price_history, "MA_30")
-
-# It will give an error while checking the data with moving averages with different periods:
-# MA with 90 days period will require more days to compute than a 30 days period moving average 
-
-sp500_price_history = sp500_price_history[sp500_price_history['Momentum'] != "Error"]
-sp500_price_history = sp500_price_history.reset_index(drop=True)
-
-## CREATING BACKTEST ENVIRONMENT
+## CREATING BACKTESTING ENVIRONMENT
 
 # Defining variables to perform the strategy
 
-weights_if_long = [0.80,0.20]
-weights_if_short = [0.20,0.80]
-n_assets = 2
+possible_allocation_combinations_long = list(zip([round((i*0.10),2) for i in range(1,10)],[round((1 - i*0.10),2) for i in range(1,10)]))
+possible_allocation_combinations_short = list(zip([round((i*0.10),2) for i in range(10,1,-1)],[round((1 - i*0.10),2) for i in range(10,1,-1)]))
 
-def backtest(sp500_price_history, stocks_df, weights_if_long, weights_if_short, n_assets):
+strategy_returns = []
+settings = []
 
-    for i in range(max(sp500_price_history['Week Number'])):
+# This for loop will iterate all strategy dinamic variables: 
+# allocation combinations for long and short, all moving averages and number of assets to long and short
 
-        # Gathering the data we need from all dataframes
+for i in range(len(possible_allocation_combinations_long)):
 
-        temporary_data_sp500 = sp500_price_history[sp500_price_history['Week Number'] == i].reset_index(drop=True)
+    ma = 'MA_30'
 
-        # For each week, gathering data of top performer and worst performer
+    # We are defining a dinamic name for the current strategy we are backtesting,
+    # otherwise we won't be able to keep track of what parameters are being tested.
+        
+    test_settings = f"{ma} {str(possible_allocation_combinations_long[i])} {str(possible_allocation_combinations_short[i])} {str(1)}"
+    settings.append(test_settings)
+    
+    print("Performing test for: ", test_settings)
+    
+    # We are recalling a function from our personal libary to determinate if the actual momentum of S&P500 is currently long
+    # It will check for each data point if the actual price is long 
+    
+    sp500_price_history = trading_functions.determinate_momentum(all_ma_sp500_price_history, ma)
+    
+    # It will give an error while checking the data with moving averages with different periods:
+    # for example MA with 90 days period will require more days to compute than a 30 days period moving average 
+    
+    sp500_price_history = sp500_price_history[sp500_price_history['Momentum'] != "Error"]
+    sp500_price_history = sp500_price_history.reset_index(drop=True)
+                
+    results = trading_functions.backtest_strategy(sp500_price_history, stocks_df, possible_allocation_combinations_long[i], possible_allocation_combinations_short[i], 1)
+    
+    strategy_returns.append(results)     
+    print("Strategy Backtested")
 
-        if len(temporary_data_sp500) == 4 or len(temporary_data_sp500) == 5:
+df = pd.DataFrame(list(zip(settings,strategy_returns)), columns=['Strategy', 'Strategy Returns'])
 
-            week = temporary_data_sp500['Week Number'][0]
-            stocks_df_n_week = stocks_df[stocks_df['Week Number'] == week-1].reset_index(drop=True)
-            loc_1,loc_2 = stocks_df_n_week.iloc[0],stocks_df_n_week.iloc[len(stocks_df_n_week)-1]
-            stocks_df_n_week = pd.concat([loc_1,loc_2], axis=1).transpose().reset_index(drop=True)
-            stocks_df_n_week_pct_change = stocks_df_n_week.drop(['Date', 'Week Number'], axis=1).pct_change().drop(0,axis=0).reset_index(drop=True)
-            stocks_df_n_week_pct_change = stocks_df_n_week_pct_change.transpose().rename(columns={0:"Performance"}).sort_values("Performance", ascending=False)
+strategies = []
+trading_weeks = []
+strategies_balances = []
 
-            top_performer = stocks_df_n_week_pct_change.head(n_assets).reset_index()
-            worst_performer = stocks_df_n_week_pct_change.tail(n_assets).reset_index()
+for i in range(len(df)):
 
-            print(top_performer)
-            print(worst_performer)
+    strategies.append(df['Strategy'][i])
+    balance = 100
+    balance_history = []
+    trading_weeks_n = []
 
-        else: print("Data for this trading week is incomplete, skipping to the next week...")
+    for k in range(len(df['Strategy Returns'][i])):
+        strategy_n_return = df['Strategy Returns'][i]
+        trading_weeks_n.append(strategy_n_return['Week'][k])
+        balance = balance + (balance * strategy_n_return['Return'][k])
+        balance_history.append(balance)
+    
+    strategies_balances.append(balance_history)
+    trading_weeks.append(trading_weeks_n)
 
-backtest(sp500_price_history, stocks_df, weights_if_long, weights_if_short, n_assets)
+final_df = pd.DataFrame(list(zip(strategies,trading_weeks,strategies_balances)), columns=['Strategy', 'Trading Weeks','Strategy Balance'])  
