@@ -134,24 +134,26 @@ for i in range(len(possible_allocation_combinations_long)):
 
 df = pd.DataFrame(list(zip(settings,strategy_returns)), columns=['Strategy', 'Strategy Returns'])
 
-strategies = []
-trading_weeks = []
-strategies_balances = []
+print(df['Strategy Returns'][0])
 
-for i in range(len(df)):
-
-    strategies.append(df['Strategy'][i])
-    balance = 100
-    balance_history = []
-    trading_weeks_n = []
-
-    for k in range(len(df['Strategy Returns'][i])):
-        strategy_n_return = df['Strategy Returns'][i]
-        trading_weeks_n.append(strategy_n_return['Week'][k])
-        balance = balance + (balance * strategy_n_return['Return'][k])
-        balance_history.append(balance)
-    
-    strategies_balances.append(balance_history)
-    trading_weeks.append(trading_weeks_n)
-
-final_df = pd.DataFrame(list(zip(strategies,trading_weeks,strategies_balances)), columns=['Strategy', 'Trading Weeks','Strategy Balance'])  
+#strategies = []
+#trading_weeks = []
+#strategies_balances = []
+#
+#for i in range(len(df)):
+#
+#    strategies.append(df['Strategy'][i])
+#    balance = 100
+#    balance_history = []
+#    trading_weeks_n = []
+#
+#    for k in range(len(df['Strategy Returns'][i])):
+#        strategy_n_return = df['Strategy Returns'][i]
+#        trading_weeks_n.append(strategy_n_return['Week'][k])
+#        balance = balance + (balance * strategy_n_return['Return'][k])
+#        balance_history.append(balance)
+#    
+#    strategies_balances.append(balance_history)
+#    trading_weeks.append(trading_weeks_n)
+#
+#final_df = pd.DataFrame(list(zip(strategies,trading_weeks,strategies_balances)), columns=['Strategy', 'Trading Weeks','Strategy Balance'])  
